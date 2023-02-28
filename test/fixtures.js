@@ -1,6 +1,7 @@
+const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 const { ethers } = require("hardhat");
 
-async function fixture() {
+async function initialFixture() {
   const signers = await ethers.getSigners();
   const deployer = signers[0];
   const nextNonce = await deployer.getTransactionCount();
@@ -21,6 +22,28 @@ async function fixture() {
   };
 }
 
+async function proposedFixture() {
+  const { governor, token } = await loadFixture(initialFixture);
+  const signer = await ethers.getSigner();
+  const abi = ["function mint(address,uint256)"];
+  const interface = new ethers.utils.Interface(abi);
+  const calldata = interface.encodeFunctionData("mint", [signer.address, 1000]);
+  const txProposal = await governor.propose(
+    [token.address],
+    [0],
+    [calldata],
+    "Proposal to mine 1000wei"
+  );
+  const receipt = await txProposal.wait();
+  const proposalId = receipt.events[0].args[0];
+  return {
+    governor,
+    token,
+    proposalId,
+  };
+}
+
 module.exports = {
-  fixture,
+  initialFixture,
+  proposedFixture,
 };
